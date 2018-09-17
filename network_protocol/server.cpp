@@ -16,9 +16,6 @@
 
 #include <string>
 
-const int CLIENT_0_WAITING = 4;
-const int CLIENT_1_WAITING = 5;
-
 const int CLIENT_0_READY = 1;
 const int CLIENT_1_READY = 2;
 const int BOTH_CLIENTS_READY = 3;
@@ -49,7 +46,7 @@ class TCPServer
         struct sockaddr_in serv_addr_, cli_addr_;
         socklen_t clilen_;
 
-        uint8_t status_;
+        int status_;
         client clients[2];
 };
 
@@ -61,7 +58,7 @@ void TCPServer::setup(int port)
 
 
 
-     srvsock_ = socket(AF_INET, SOCK_STREAM, 0);  // create socket
+    srvsock_ = socket(AF_INET, SOCK_STREAM, 0);  // create socket
     if ( srvsock_ < 0)
     {
         std::cout << "Could not open socket" << std::endl;
@@ -89,7 +86,7 @@ void TCPServer::setup(int port)
 void TCPServer::receive()
 {
   fd_set active_fd_set, read_fd_set;
-  int result, maxfd;
+  int n_bytes, maxfd;
   struct sockaddr_in clientname;
   size_t size;
   char buffer[MAX_BUFFER_SIZE+1];
@@ -104,9 +101,9 @@ void TCPServer::receive()
     {
         if (clients[0].waiting && clients[1].waiting)
         {
-            std::string msg('R',1);
-            int n_bytes = send(clients[0].fd,msg.c_str(), 1, 0);  
-            n_bytes = send(clients[1].fd, msg.c_str(), 1, 0); 
+            std::string msg("ready");
+            n_bytes = send(clients[0].fd,msg.c_str(), msg.length(), 0);  
+            n_bytes = send(clients[1].fd, msg.c_str(), msg.length(), 0); 
             clients[1].waiting = false;
             clients[0].waiting = false;
 
@@ -124,62 +121,78 @@ void TCPServer::receive()
             n_bytes = send(clients[1].fd, buffer, to_send, 0); 
             exit(EXIT_SUCCESS);
         }
-      /* Block until input arrives on one or more active sockets. */
-      read_fd_set = active_fd_set;
-      if (select (maxfd+1, &read_fd_set, NULL, NULL, NULL) < 0)
+        /* Block until input arrives on one or more active sockets. */
+        read_fd_set = active_fd_set;
+
+        struct timeval timeout;
+        timeout.tv_sec  = 1;
+        timeout.tv_usec = 0;
+
+        int result = select (maxfd+1, &read_fd_set, NULL, NULL, &timeout);
+
+        if (result < 0)
         {
-          perror ("select");
-          exit (EXIT_FAILURE);
+            perror ("select");
+            exit (EXIT_FAILURE);
         }
+        else if (result == 0)
+        {
+            std::cout << "select() timeout" << std::endl;
+            if (status_ != BOTH_CLIENTS_READY)
+            {
+                std::string msg("waiting");
+                int n_bytes = send(clients[0].fd,msg.c_str(), msg.length(), 0);  
+                n_bytes = send(clients[1].fd, msg.c_str(), msg.length(), 0); 
+            }
+        }
+        /* Service all the sockets with input pending. */
+        for (int i = 0; i < maxfd + 1; ++i)
+            if (FD_ISSET (i, &read_fd_set))
+            {
+                if (i == srvsock_)
+                {
+                    /* Connection request on original socket. */
+                    int newfd;
+                    size = sizeof (clientname);
+                    newfd = accept(srvsock_, (struct sockaddr *) &cli_addr_, &clilen_);
 
-      /* Service all the sockets with input pending. */
-      for (int i = 0; i < maxfd + 1; ++i)
-        if (FD_ISSET (i, &read_fd_set))
-          {
-            if (i == srvsock_)
-              {
-                /* Connection request on original socket. */
-                int newfd;
-                size = sizeof (clientname);
-                newfd = accept(srvsock_, (struct sockaddr *) &cli_addr_, &clilen_);
+                    if (newfd < 0)
+                    {
+                        perror ("accept");
+                        exit (EXIT_FAILURE);
+                    }
+                    maxfd = (maxfd < newfd) ? newfd : maxfd;   // Set new max 
 
-                if (newfd < 0)
-                  {
-                    perror ("accept");
-                    exit (EXIT_FAILURE);
-                  }
-                maxfd = (maxfd < newfd) ? newfd : maxfd;   // Set new max 
+                    FD_SET (newfd, &active_fd_set);
 
-                FD_SET (newfd, &active_fd_set);
+                    if (i > 5) exit(1);
+                    int clientid = newfd - 4;
+                    clients[clientid].id = clientid;
+                    clients[clientid].fd = newfd;
+                    clients[clientid].waiting = true;
+                }
+                else
+                {
+                    int clientid = i - 4;
 
-                if (i > 5) exit(1);
-                int clientid = newfd - 4;
-                clients[clientid].id = clientid;
-                clients[clientid].fd = newfd;
-                clients[clientid].waiting = true;
-              }
-            else
-              {
-                int clientid = i - 4;
+                    /* Data arriving on an already-connected socket. */
+                    if ((result = recv(i, buffer, MAX_BUFFER_SIZE, 0)) < 0)
+                        {
+                            perror("recv");
+                            exit(EXIT_FAILURE);
+                        }
+                    std::string request(buffer,result);
 
-                /* Data arriving on an already-connected socket. */
-                if ((result = recv(i, buffer, MAX_BUFFER_SIZE, 0)) < 0)
-                  {
-                      perror("recv");
-                      exit(EXIT_FAILURE);
-                  }
-                std::string request(buffer,result);
+                    //Format V0: <vel> where <vel> is a double digit number
+                    clients[clientid].velocity = boost::lexical_cast<int>(request.substr(4,2));
+                    std::cout << "Received: " << clients[clientid].velocity  << std::endl;
 
-                //Format V0: <vel> where <vel> is a double digit number
-                clients[clientid].velocity = boost::lexical_cast<int>(request.substr(4,2));
-                std::cout << "Received: " << clients[clientid].velocity  << std::endl;
-
-                if(clientid == 0) status_ |= CLIENT_0_READY;
-                if(clientid == 1) status_ |= CLIENT_1_READY;
-
-                FD_CLR (i, &active_fd_set);
-              }
-          }
+                    if(clientid == 0) status_ += CLIENT_0_READY;
+                    if(clientid == 1) status_ += CLIENT_1_READY;
+                    std::cout << "Set " << clientid << " status now " << status_ << std::endl;
+                    FD_CLR (i, &active_fd_set);
+                }
+            }
     }
 }
 

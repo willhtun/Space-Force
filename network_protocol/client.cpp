@@ -54,11 +54,12 @@ TCPClient::~TCPClient()
     close(sockfd_);  // close socket
 }
 
-void TCPClient::find_game()
+bool TCPClient::is_ready()
 {
-    std::cout << "Waiting for opponent..." << std::endl;
-    int n_bytes = recv(sockfd_,buffer_, BUFFER_SIZE, 0);  // read from the socket
-    std::cout << "Ready!" << std::endl;
+    std::string ready_string("ready");
+    int n_bytes = recv(sockfd_,buffer_, BUFFER_SIZE, 0); 
+    std::string response = std::string(buffer_,n_bytes);
+    return (response != ready_string);
 }
 
 void TCPClient::send_message(std::string msg)
@@ -107,7 +108,8 @@ int main(int argc, char *argv[])
 {
     TCPClient client;
     client.setup("localhost", 1101);
-    client.find_game();
+    while(client.is_ready())
+        std::cout << "waiting" << std::endl;
 
     client.send_velocity(boost::lexical_cast<int>(argv[1]));
 

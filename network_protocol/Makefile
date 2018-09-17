@@ -1,8 +1,9 @@
 CC=g++
-CPPFLAGS=-g -Wall
-USERID=404561839
+CPPFLAGS=-g -Wall -std=c++11
 
-all: server client
+all: server client 
+
+
 
 server: server.cpp
 	$(CC) -o $@ $^ $(CPPFLAGS) -lboost_system

@@ -10,7 +10,7 @@ class TCPClient
         void setup(std::string hostname, int port);
 
         // Block until find opponent
-        void find_game();
+        bool is_ready();
 
         // Send velocity to server
         int send_velocity(int vel);
