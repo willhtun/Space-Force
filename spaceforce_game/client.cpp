@@ -20,8 +20,12 @@
 
 TCPClient::TCPClient(std::string hostname, int port)
 {
+	WSADATA Data;
+
 	flags_ = 0;
 	port_ = port;
+
+	WSAStartup(MAKEWORD(2, 2), &Data);
 
 	// create a new socket
 	sockfd_ = socket(AF_INET, SOCK_STREAM, 0);
