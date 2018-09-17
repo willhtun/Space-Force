@@ -107,11 +107,11 @@ int TCPClient::get_opponents_velocity()
 // This code shows how to interface with the client
 int main(int argc, char *argv[])
 {   
-    if (argc != 2 )
-        std::cout << "Usage: ./client <velocity>" << std::endl;
+    if (argc != 4 )
+        std::cout << "Usage: ./client <hostname> <port> <velocity>" << std::endl;
 
     // Init client
-    TCPClient client("localhost", 1101);
+    TCPClient client(argv[1], atoi(argv[2]));
 
     // Block until two clients have connected
     while(client.is_ready())  std::cout << "waiting" << std::endl;

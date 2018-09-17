@@ -191,7 +191,13 @@ void TCPServer::loop()
 
 int main(int argc, char *argv[])
 {
-    TCPServer server(1101);
+    if (argc != 2)
+    {
+        std::cout << "Usage: ./server <port>" << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    
+    TCPServer server(atoi(argv[1]));
     server.loop();
 
 return 0;
