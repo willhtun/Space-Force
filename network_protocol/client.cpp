@@ -97,7 +97,7 @@ int TCPClient::get_opponents_velocity()
     }
     
     std::string response(buffer_,n_bytes);
-    int opp_vel = boost::lexical_cast<int>(response.substr(5,2));
+    int opp_vel = stoi(response.substr(5,2));
     return opp_vel;
 }
 
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
     while(client.is_ready())  std::cout << "waiting" << std::endl;
 
     // Send velocity to server
-    int velocity_to_send = boost::lexical_cast<int>(argv[1]);
+    int velocity_to_send = atoi(argv[1]);
     client.send_velocity(velocity_to_send);
 
     // Get opponents velocity 

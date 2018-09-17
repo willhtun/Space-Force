@@ -12,7 +12,7 @@
 #include <sys/socket.h>  // definitions of structures needed for sockets, e.g. sockaddr
 #include <netinet/in.h>  // constants and structures needed for internet domain addresses, e.g. sockaddr_in
 #include <iostream>
-#include <boost/lexical_cast.hpp>
+#include <sstream> 
 #include <string>
 
 #include "server.h"
@@ -163,7 +163,7 @@ void TCPServer::loop()
                     std::string request(buffer,result);
 
                     //Format V0: <vel> where <vel> is a double digit number
-                    clients[clientid].velocity = boost::lexical_cast<int>(request.substr(4,2));
+                    clients[clientid].velocity = stoi(request.substr(4,2));
 
                     if(clientid == 0) status_ += CLIENT_0_READY;
                     if(clientid == 1) status_ += CLIENT_1_READY;
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
         std::cout << "Usage: ./server <port>" << std::endl;
         exit(EXIT_FAILURE);
     }
-    
+
     TCPServer server(atoi(argv[1]));
     server.loop();
 
