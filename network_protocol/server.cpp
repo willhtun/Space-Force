@@ -16,10 +16,16 @@
 
 #include <string>
 
+// States
 const int CLIENT_0_READY = 1;
 const int CLIENT_1_READY = 2;
 const int BOTH_CLIENTS_READY = 3;
 
+// Game constants
+const int NUMBER_OF_PLAYERS = 2;
+const int MAX_BUFFER_SIZE = 100;
+
+// Struct for holding client information
 struct client 
 {
     int id;
@@ -32,31 +38,30 @@ class TCPServer
 {
     public:
         ~TCPServer(){ close( srvsock_);}
-        void setup(int port);
-        void receive();
-
+        TCPServer(int port);
+        void loop();
 
     private:
-        bool check_format(std::string client_msg, int fd);
-        std::string handle_request(char* request, int len, int client_id);
-        void save_value_and_update_status(std::string fromClient, int client_id);
+        // Game stuff
+        int status_;
+        client clients[NUMBER_OF_PLAYERS];
 
-        int srvsock_,peersock_;
+        // Socket stuff
+        int srvsock_;
         int port_;
         struct sockaddr_in serv_addr_, cli_addr_;
         socklen_t clilen_;
 
-        int status_;
-        client clients[2];
+        // TODO 
+        //bool check_format(std::string client_msg, int fd);
 };
 
-void TCPServer::setup(int port)
+TCPServer::TCPServer(int port)
 {
+    // Initial game values
     status_ = 0;
     clients[0].waiting = false;
     clients[1].waiting = false;
-
-
 
     srvsock_ = socket(AF_INET, SOCK_STREAM, 0);  // create socket
     if ( srvsock_ < 0)
@@ -78,12 +83,12 @@ void TCPServer::setup(int port)
         std::cout << "Error. Could not bind" << std::endl;
         exit(1);
     }
+
     listen( srvsock_, 5);  // 5 simultaneous connection at most
 }
 
-#define MAX_BUFFER_SIZE 100
 
-void TCPServer::receive()
+void TCPServer::loop()
 {
   fd_set active_fd_set, read_fd_set;
   int n_bytes, maxfd;
@@ -99,6 +104,7 @@ void TCPServer::receive()
 
   while (1)
     {
+        // If both clients are waiting, send message to start
         if (clients[0].waiting && clients[1].waiting)
         {
             std::string msg("ready");
@@ -109,6 +115,7 @@ void TCPServer::receive()
 
         }
 
+        // Both clients are ready for opponents velocity
         if (BOTH_CLIENTS_READY == status_)
         {
             char buffer[100];
@@ -119,8 +126,12 @@ void TCPServer::receive()
 
             to_send = sprintf(buffer, "V0s: %d,%d", clients[1].velocity, clients[0].velocity);
             n_bytes = send(clients[1].fd, buffer, to_send, 0); 
-            exit(EXIT_SUCCESS);
+            
+            // TODO
+            // Keep connection open for longer games/replaying
+            break;
         }
+
         /* Block until input arrives on one or more active sockets. */
         read_fd_set = active_fd_set;
 
@@ -130,11 +141,13 @@ void TCPServer::receive()
 
         int result = select (maxfd+1, &read_fd_set, NULL, NULL, &timeout);
 
+        // ERROR
         if (result < 0)
         {
             perror ("select");
             exit (EXIT_FAILURE);
         }
+        // TIMEOUT
         else if (result == 0)
         {
             if (status_ != BOTH_CLIENTS_READY)
@@ -144,7 +157,8 @@ void TCPServer::receive()
                 n_bytes = send(clients[1].fd, msg.c_str(), msg.length(), 0); 
             }
         }
-        /* Service all the sockets with input pending. */
+
+        // OTHERWISE Service all the sockets with input pending
         for (int i = 0; i < maxfd + 1; ++i)
             if (FD_ISSET (i, &read_fd_set))
             {
@@ -184,56 +198,35 @@ void TCPServer::receive()
 
                     //Format V0: <vel> where <vel> is a double digit number
                     clients[clientid].velocity = boost::lexical_cast<int>(request.substr(4,2));
-                    std::cout << "Received: " << clients[clientid].velocity  << std::endl;
 
                     if(clientid == 0) status_ += CLIENT_0_READY;
                     if(clientid == 1) status_ += CLIENT_1_READY;
-                    std::cout << "Set " << clientid << " status now " << status_ << std::endl;
                     FD_CLR (i, &active_fd_set);
                 }
             }
     }
 }
 
-bool TCPServer::check_format(std::string client_msg, int fd)
-{
-    //TODO: Check it is a valid client message
-    std::cout << client_msg.substr(0, 3) << std::endl;
-    if(client_msg.substr(0, 3) != std::string("V0:"))
-        {
-            std::cerr << "Received message in wrong format" << std::endl;
-            std::string response("Wrong format");
-            int n = send(fd, response.c_str(), response.length(), 0);
-            if (n < 0) std::cerr << "Could not send" << std::endl;
-            return false;
-        }
-    return true;
-}
-
-void TCPServer::save_value_and_update_status(std::string client_msg, int client_id)
-{
-    switch(client_id)
-    {
-        case 0:
-            status_ |= CLIENT_0_READY;
-            break;
-        case 1:
-            status_ |= CLIENT_1_READY;
-            break;
-        default:
-            std::cout << "Error! Client numbers are fucked up" << std::endl;
-            break;
-    }
-}
-
-
+// bool TCPServer::check_format(std::string client_msg, int fd)
+// {
+//     //TODO: Check it is a valid client message
+//     std::cout << client_msg.substr(0, 3) << std::endl;
+//     if(client_msg.substr(0, 3) != std::string("V0:"))
+//         {
+//             std::cerr << "Received message in wrong format" << std::endl;
+//             std::string response("Wrong format");
+//             int n = send(fd, response.c_str(), response.length(), 0);
+//             if (n < 0) std::cerr << "Could not send" << std::endl;
+//             return false;
+//         }
+//     return true;
+// }
 
 
 int main(int argc, char *argv[])
 {
-    TCPServer server;
-    server.setup(1101);
-    server.receive();
+    TCPServer server(1101);
+    server.loop();
 
 return 0;
 }
