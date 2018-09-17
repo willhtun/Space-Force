@@ -7,7 +7,10 @@ class TCPClient
 {
     public:
         // Setup and connect to server
-        void setup(std::string hostname, int port);
+        TCPClient(std::string hostname, int port);
+
+        // Close socket
+        ~TCPClient();
 
         // Block until find opponent
         bool is_ready();
@@ -15,14 +18,8 @@ class TCPClient
         // Send velocity to server
         int send_velocity(int vel);
 
-        // Send message to server
-        void send_message(std::string msg);
-
         //Wait for reponse
         int get_opponents_velocity();
-
-        // Close socket
-        ~TCPClient();
 
     private:
         char buffer_[BUFFER_SIZE];

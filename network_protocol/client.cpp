@@ -15,7 +15,7 @@
 #include "client.h"
 
 
-void TCPClient::setup(std::string hostname, int port)
+TCPClient::TCPClient(std::string hostname, int port)
 {   
     flags_ = 0;
     port_ = port;
@@ -25,7 +25,7 @@ void TCPClient::setup(std::string hostname, int port)
     if (sockfd_ < 0)
     {
        fprintf(stderr,"Error opening socket");
-       exit(0);
+       exit(EXIT_FAILURE);
     }
 
     // get server informations
@@ -33,7 +33,7 @@ void TCPClient::setup(std::string hostname, int port)
     if (server_ == NULL) 
     {
         fprintf(stderr,"No such host\n");
-        exit(0);
+        exit(EXIT_FAILURE);
     }
 
     memset((char *) &serv_addr_, 0, sizeof(serv_addr_));
@@ -45,7 +45,7 @@ void TCPClient::setup(std::string hostname, int port)
     if (connect(sockfd_,(struct sockaddr *)&serv_addr_,sizeof(serv_addr_)) < 0) 
     {
        fprintf(stderr,"Error connecting to socket");
-       exit(0);
+       exit(EXIT_FAILURE);
     }
 }
 
@@ -58,70 +58,71 @@ bool TCPClient::is_ready()
 {
     std::string ready_string("ready");
     int n_bytes = recv(sockfd_,buffer_, BUFFER_SIZE, 0); 
+    if (n_bytes < 0)
+    {
+       fprintf(stderr,"Error reading to socket");
+       exit(EXIT_FAILURE);
+    }
     std::string response = std::string(buffer_,n_bytes);
     return (response != ready_string);
 }
 
-void TCPClient::send_message(std::string msg)
+
+int TCPClient::send_velocity(int vel)
 {
-    int n_bytes = send(sockfd_, msg.c_str(), msg.length(), flags_);  
+    memset(buffer_,0, BUFFER_SIZE);
+
+    int to_send = sprintf(buffer_, "V0: %d", vel);
+    
+    int n_bytes = send(sockfd_, buffer_, to_send, flags_);  
     if (n_bytes < 0)
     {
        fprintf(stderr,"Error writing to socket");
-       exit(0);
+       exit(EXIT_FAILURE);
     }
-}
-int TCPClient::send_velocity(int vel)
-{
-    char buffer[32];
-    int n = sprintf(buffer, "V0: %d", vel);
-    send_message(std::string(buffer,n));
     return 0;
 }
 
 
-
+//TODO: Make parser error proof
 int TCPClient::get_opponents_velocity()
 {
     memset(buffer_,0, BUFFER_SIZE);
 
-    int n_bytes = recv(sockfd_,buffer_, BUFFER_SIZE, 0);  // read from the socket
-    std::cout << buffer_ << std::endl;
-
+    int n_bytes = recv(sockfd_,buffer_, BUFFER_SIZE, 0); 
     if (n_bytes < 0)
     {
        fprintf(stderr,"Error reading to socket");
-       exit(0);
+       exit(EXIT_FAILURE);
     }
     
     std::string response(buffer_,n_bytes);
-    int i = 0;
-    for(char& c : response) {
-        if (c == 'V') break;
-        i++;
-    }
     int opp_vel = boost::lexical_cast<int>(response.substr(i+5,2));
     return opp_vel;
 }
 
+
+
+// EXAMPLE CODE
+// This code shows how to interface with the client
 int main(int argc, char *argv[])
-{
-    TCPClient client;
-    client.setup("localhost", 1101);
-    while(client.is_ready())
-        std::cout << "waiting" << std::endl;
+{   
+    if (argc != 2 )
+        std::cout << "Usage: ./client <velocity>" << std::endl;
 
-    client.send_velocity(boost::lexical_cast<int>(argv[1]));
+    // Init client
+    TCPClient client("localhost", 1101);
 
-    // std::cout << "Enter message: " << std::endl;
-    // std::cin >> msg;
+    // Block until two clients have connected
+    while(client.is_ready())  std::cout << "waiting" << std::endl;
 
+    // Send velocity to server
+    int velocity_to_send = boost::lexical_cast<int>(argv[1]);
+    client.send_velocity(velocity_to_send);
+
+    // Get opponents velocity 
     int o_vel = client.get_opponents_velocity();
-
-    // Print out repsonse
     std::cout << "Opponents velocity: "<< o_vel << std::endl;
-
-
 
     return 0;
 }
