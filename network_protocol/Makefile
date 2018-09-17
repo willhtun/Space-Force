@@ -6,10 +6,10 @@ all: server client
 
 
 server: server.cpp
-	$(CC) -o $@ $^ $(CPPFLAGS) -lboost_system
+	$(CC) -o $@ $^ $(CPPFLAGS) 
 
 client: client.cpp
-	$(CC) -o $@ $^ $(CPPFLAGS) -lboost_system
+	$(CC) -o $@ $^ $(CPPFLAGS) 
 
 clean:
 	rm -rf *.o *~ *.gch *.swp *.dSYM server client *.tar.gz
