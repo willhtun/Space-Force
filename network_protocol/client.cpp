@@ -10,20 +10,26 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <iostream>
+#include <boost/lexical_cast.hpp>
 #include "client.h"
 
 
 void TCPClient::setup(std::string hostname, int port)
 {   
+    flags_ = 0;
     port_ = port;
-    sockfd_ = socket(AF_INET, SOCK_STREAM, 0);  // create a new socket
+
+    // create a new socket
+    sockfd_ = socket(AF_INET, SOCK_STREAM, 0);  
     if (sockfd_ < 0)
     {
        fprintf(stderr,"Error opening socket");
        exit(0);
     }
-    server_ = gethostbyname(hostname.c_str());  // takes a string like "www.yahoo.com", and returns a struct hostent which contains information, as IP address, address type, the length of the addresses...
+
+    // get server informations
+    server_ = gethostbyname(hostname.c_str());  
     if (server_ == NULL) 
     {
         fprintf(stderr,"No such host\n");
@@ -35,46 +41,85 @@ void TCPClient::setup(std::string hostname, int port)
     bcopy((char *)server_->h_addr, (char *)&serv_addr_.sin_addr.s_addr, server_->h_length);
     serv_addr_.sin_port = htons(port_);
 
-    if (connect(sockfd_,(struct sockaddr *)&serv_addr_,sizeof(serv_addr_)) < 0) //establish a connection to the server
+    //establish a connection to the server
+    if (connect(sockfd_,(struct sockaddr *)&serv_addr_,sizeof(serv_addr_)) < 0) 
     {
        fprintf(stderr,"Error connecting to socket");
        exit(0);
     }
 }
 
-void TCPClient::send()
+TCPClient::~TCPClient()
 {
-    char buffer[256];
+    close(sockfd_);  // close socket
+}
 
-    printf("Please enter the message: ");
-    memset(buffer,0, 256);
-    fgets(buffer,255,stdin);  // read message
+void TCPClient::find_game()
+{
+    std::cout << "Waiting for opponent..." << std::endl;
+    int n_bytes = recv(sockfd_,buffer_, BUFFER_SIZE, 0);  // read from the socket
+    std::cout << "Ready!" << std::endl;
+}
 
-    int n = write(sockfd_,buffer,strlen(buffer));  // write to the socket
-    if (n < 0)
+void TCPClient::send_message(std::string msg)
+{
+    int n_bytes = send(sockfd_, msg.c_str(), msg.length(), flags_);  
+    if (n_bytes < 0)
     {
        fprintf(stderr,"Error writing to socket");
        exit(0);
     }
+}
+int TCPClient::send_velocity(int vel)
+{
+    char buffer[32];
+    int n = sprintf(buffer, "V0: %d", vel);
+    send_message(std::string(buffer,n));
+    return 0;
+}
 
-    memset(buffer,0,256);
-    n = read(sockfd_,buffer,255);  // read from the socket
-    if (n < 0)
+
+
+int TCPClient::get_opponents_velocity()
+{
+    memset(buffer_,0, BUFFER_SIZE);
+
+    int n_bytes = recv(sockfd_,buffer_, BUFFER_SIZE, 0);  // read from the socket
+    std::cout << buffer_ << std::endl;
+
+    if (n_bytes < 0)
     {
        fprintf(stderr,"Error reading to socket");
        exit(0);
     }
-
-    printf("%s\n",buffer);  // print server's response
-
-    close(sockfd_);  // close socket
+    
+    std::string response(buffer_,n_bytes);
+    int i = 0;
+    for(char& c : response) {
+        if (c == 'V') break;
+        i++;
+    }
+    int opp_vel = boost::lexical_cast<int>(response.substr(i+5,2));
+    return opp_vel;
 }
+
 int main(int argc, char *argv[])
 {
     TCPClient client;
-    client.setup("localhost", 1100);
+    client.setup("localhost", 1101);
+    client.find_game();
 
-    client.send();
+    client.send_velocity(boost::lexical_cast<int>(argv[1]));
+
+    // std::cout << "Enter message: " << std::endl;
+    // std::cin >> msg;
+
+    int o_vel = client.get_opponents_velocity();
+
+    // Print out repsonse
+    std::cout << "Opponents velocity: "<< o_vel << std::endl;
+
+
 
     return 0;
 }
