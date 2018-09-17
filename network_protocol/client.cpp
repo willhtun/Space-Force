@@ -97,7 +97,7 @@ int TCPClient::get_opponents_velocity()
     }
     
     std::string response(buffer_,n_bytes);
-    int opp_vel = boost::lexical_cast<int>(response.substr(i+5,2));
+    int opp_vel = boost::lexical_cast<int>(response.substr(5,2));
     return opp_vel;
 }
 

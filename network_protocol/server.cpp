@@ -137,7 +137,6 @@ void TCPServer::receive()
         }
         else if (result == 0)
         {
-            std::cout << "select() timeout" << std::endl;
             if (status_ != BOTH_CLIENTS_READY)
             {
                 std::string msg("waiting");
