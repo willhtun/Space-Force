@@ -1,2 +1,2 @@
-# SPACE FORCE
+# Space Force
 Space Force baby
