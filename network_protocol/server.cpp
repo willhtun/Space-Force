@@ -13,48 +13,10 @@
 #include <netinet/in.h>  // constants and structures needed for internet domain addresses, e.g. sockaddr_in
 #include <iostream>
 #include <boost/lexical_cast.hpp>
-
 #include <string>
 
-// States
-const int CLIENT_0_READY = 1;
-const int CLIENT_1_READY = 2;
-const int BOTH_CLIENTS_READY = 3;
+#include "server.h"
 
-// Game constants
-const int NUMBER_OF_PLAYERS = 2;
-const int MAX_BUFFER_SIZE = 100;
-
-// Struct for holding client information
-struct client 
-{
-    int id;
-    int fd;
-    int velocity;
-    bool waiting;
-};
-
-class TCPServer 
-{
-    public:
-        ~TCPServer(){ close( srvsock_);}
-        TCPServer(int port);
-        void loop();
-
-    private:
-        // Game stuff
-        int status_;
-        client clients[NUMBER_OF_PLAYERS];
-
-        // Socket stuff
-        int srvsock_;
-        int port_;
-        struct sockaddr_in serv_addr_, cli_addr_;
-        socklen_t clilen_;
-
-        // TODO 
-        //bool check_format(std::string client_msg, int fd);
-};
 
 TCPServer::TCPServer(int port)
 {
@@ -87,6 +49,10 @@ TCPServer::TCPServer(int port)
     listen( srvsock_, 5);  // 5 simultaneous connection at most
 }
 
+TCPServer::~TCPServer() 
+{
+    close( srvsock_);
+}
 
 void TCPServer::loop()
 {
