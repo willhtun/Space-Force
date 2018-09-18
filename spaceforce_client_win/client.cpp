@@ -45,18 +45,21 @@ void TCPClient::setup(std::string hostname, int port)
 	memcpy((char *)&serv_addr_.sin_addr.s_addr, (char *)server_->h_addr, server_->h_length); // changed for windows
 	serv_addr_.sin_port = htons(port_);
 
-	//establish a connection to the server
-	if (connect(sockfd_, (struct sockaddr *)&serv_addr_, sizeof(serv_addr_)) < 0)
-	{
-		fprintf(stderr, "Error connecting to socket");
-		exit(EXIT_FAILURE);
-	}
 }
 
 TCPClient::~TCPClient()
 {
 	closesocket(sockfd_);  // close socket
 	WSACleanup();
+}
+
+void TCPClient::ready_up() {
+	//establish a connection to the server
+	if (connect(sockfd_, (struct sockaddr *)&serv_addr_, sizeof(serv_addr_)) < 0)
+	{
+		fprintf(stderr, "Error connecting to socket");
+		exit(EXIT_FAILURE);
+	}
 }
 
 bool TCPClient::is_ready()
@@ -69,6 +72,7 @@ bool TCPClient::is_ready()
 		exit(EXIT_FAILURE);
 	}
 	std::string response = std::string(buffer_, n_bytes);
+	memset(buffer_, 0, BUFFER_SIZE);
 	return (response == ready_string);
 }
 

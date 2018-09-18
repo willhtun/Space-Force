@@ -2,23 +2,16 @@
 
 Scoreboard::Scoreboard(Screen * s) {
 	m_screen = s;
+}
 
-	final_game.left = &semi_game[0];
-	final_game.right = &semi_game[1];
+void Scoreboard::enterCompetitors(std::string teamNames[], int teamSize) {
+	for (int i = 0; i < teamSize; i++) {
+		teams[i] = teamNames[i];
+	}
+}
 
-	semi_game[0].left = &quarter_game[0];
-	semi_game[0].right = &quarter_game[1];
-	semi_game[1].left = &quarter_game[2];
-	semi_game[1].right = &quarter_game[3];
+void Scoreboard::refreshScoreBoard() {
 
-	quarter_game[0].left = &qualifier_game[0];
-	quarter_game[0].right = &qualifier_game[1];
-	quarter_game[1].left = &qualifier_game[2];
-	quarter_game[1].right = &qualifier_game[3];
-	quarter_game[2].left = &qualifier_game[4];
-	quarter_game[2].right = &qualifier_game[5];
-	quarter_game[3].left = &qualifier_game[6];
-	quarter_game[3].right = &qualifier_game[7];
 }
 
 void Scoreboard::printScoreBoard() {
@@ -71,24 +64,109 @@ void Scoreboard::printScoreBoard() {
 	// Teams
 	for (int i = 0; i < 4; i++) {
 		m_screen->gotoXY(6, 10 + (i * 6));
-		m_screen->printString(qualifier_game[i].winnerName + "---+");
+		m_screen->printString("[ " + getCompetitor(i) + " ]" + "---+");
 	}
 	for (int i = 0; i < 4; i++) {
 		m_screen->gotoXY(85, 10 + (i * 6));
-		m_screen->printString("+---" + qualifier_game[i+4].winnerName);
+		m_screen->printString("+---[ " + getCompetitor(i + 4) + " ]");
 	}
 
 	for (int i = 0; i < 2; i++) {
 		m_screen->gotoXY(20, 13 + (2 * i * 6));
-		m_screen->printString("--" + quarter_game[i].winnerName + "---+");
+		m_screen->printString("--[ " + getWinner('q', i) + " ]---+");
 	}
 	for (int i = 0; i < 2; i++) {
 		m_screen->gotoXY(69, 13 + (2* i * 6));
-		m_screen->printString("+---" + quarter_game[i+2].winnerName + "--");
+		m_screen->printString("+---[ " + getWinner('q', i + 2) + " ]--");
 	}
 
 	m_screen->gotoXY(36, 19);
-	m_screen->printString("--" + semi_game[0].winnerName + "----+");
+	m_screen->printString("--[ " + getWinner('s', 0) + " ]----+");
 	m_screen->gotoXY(53, 19);
-	m_screen->printString("----" + semi_game[1].winnerName + "--");
+	m_screen->printString("----[ " + getWinner('s', 1) + " ]--");
+
+	m_screen->gotoXY(49, 8);
+	m_screen->printString(getWinner('f', 0));
+
+	m_screen->gotoXY(38, 35);
+	m_screen->printString("< Press ENTER twice to quit >");
+	m_screen->gotoXY(0, 35);
+}
+
+std::string parseString(std::string input, int sel) {
+	int separator = 0;
+	int count = 0;
+	for (int i = 0; i < input.length(); i++) {
+		if (input[i] == ',') {
+			if (count == sel)
+				return input.substr(separator + count, i - separator - count);
+			separator = i;
+			count++;
+		}
+	}
+	return input.substr(separator + 1, input.length());
+}
+
+void writeString(std::string& input, int sel, std::string toWrite) {
+	int separator = 0;
+	int count = 0;
+	for (int i = 0; i < input.length(); i++) {
+		if (input[i] == ',') {
+			if (count == sel) {
+				input.replace(separator + count, i - separator - count, toWrite);
+				return;
+			}
+			separator = i;
+			count++;
+		}
+	}
+	input.replace(separator + 1, input.length(), toWrite);
+	return;
+}
+
+std::string Scoreboard::getCompetitor(int num) {
+	int index = (num) / 2;
+	int position = num % 2;
+	return parseString(quarter[index], position);
+}
+
+std::string Scoreboard::getTeamName(int teamID) {
+	return teams[teamID];
+}
+
+void Scoreboard::setWinner(char league, int num, int teamID) {
+	switch (league) {
+	case 'q':
+		if (num >= 4)
+			num = 3;
+		writeString(quarter[num], 2, getTeamName(teamID));
+		break;
+	case 's':
+		if (num >= 2)
+			num = 1;
+		writeString(semi[num], 2, getTeamName(teamID));
+		break;
+	case 'f':
+		writeString(finals, 2, getTeamName(teamID));
+		break;
+	default:
+		break;
+	}
+}
+
+std::string Scoreboard::getWinner(char league, int num) {
+	switch (league) {
+	case 'q':
+		if (num >= 4)
+			num = 3;
+		return parseString(quarter[num], 2);
+	case 's':
+		if (num >= 2)
+			num = 1;
+		return parseString(semi[num], 2);
+	case 'f':
+		return parseString(finals, 2);
+	default:
+		return "Invalid arg";
+	}
 }

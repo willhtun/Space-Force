@@ -13,6 +13,9 @@ public:
 	// Close socket
 	~TCPClient();
 
+	// send ready signal
+	void ready_up();
+
 	// Block until find opponent
 	bool is_ready();
 

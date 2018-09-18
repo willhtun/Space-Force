@@ -15,7 +15,9 @@ const int ROWS_LEFT_X = 16;
 const int ROWS_LEFT_Y = 9;
 
 Game::Game(int width, int height)
- : m_screen(BOARD_WIDTH, BOARD_HEIGHT + 10), m_board(BOARD_WIDTH, BOARD_HEIGHT, &m_screen), rocket_p1(&m_screen), rocket_p2(&m_screen), m_launchpad(&m_screen), m_scoreboard(&m_screen)
+ : m_screen(BOARD_WIDTH, BOARD_HEIGHT + 10), m_board(BOARD_WIDTH, BOARD_HEIGHT, &m_screen), 
+	rocket_p1(&m_screen), rocket_p2(&m_screen), m_launchpad(&m_screen), 
+	m_scoreboard(&m_screen)
 {
 }
 
@@ -36,8 +38,6 @@ void Game::play()
 {
 	tcp_client.setup("192.168.137.27", 1100);
 
-	// Server Variables
-	bool isReady = false;
 	// Variables
 	char input;
 	bool pressedLeft = false, firstPress = true;
@@ -46,6 +46,14 @@ void Game::play()
 	int timeReset;
 	int frames = 1;
 
+	// Scoreboard
+	m_scoreboard.printScoreBoard();
+	waitForEnter();
+	m_screen.gotoXY(38, 35);
+	m_screen.printString("< Press ENTER again to quit >");
+	waitForEnter();
+
+	// Draw game
 	m_board.printBoard();
 	m_launchpad.printLaunchPad(0);
 
@@ -54,11 +62,12 @@ void Game::play()
 	m_screen.gotoXY(63, 42);
 	m_screen.printString("(x)");
 
-	// Scoreboard
-	//m_scoreboard.printScoreBoard();
-	m_screen.gotoXY(45, 50);
-	//m_screen.printString("Press Enter to quit cuz")
+	// Start game
+	m_screen.gotoXY(13, 20);
+	m_screen.printString(" Press Enter To Start ");
+
 	waitForEnter();
+	tcp_client.ready_up();
 
 	// Waiting to connect
 	Timer timer;
@@ -85,17 +94,11 @@ void Game::play()
 		m_screen.printString("(x) Disconnected");
 		cursorClear();
 		frames++;
-		if (getCharIfAny(input)) {
-			if (input == ARROW_UP) {
-				m_screen.gotoXY(13, 20);
-				m_screen.printString("                       ");
-				m_screen.gotoXY(67, 20);
-				m_screen.printString("                       ");
-				isReady = true;
-			}
-		}
-
 	}
+	m_screen.gotoXY(13, 20);
+	m_screen.printString("                       ");
+	m_screen.gotoXY(67, 20);
+	m_screen.printString("                       ");
 	
 	//CountDown
 	timeReset = timer.elapsed();
